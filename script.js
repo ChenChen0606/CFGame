@@ -189,6 +189,10 @@ const grammars = [
   }
 ];
 
+function grammarLabel(idx){
+  return idx===-1 ? 'None' : grammars[idx].name;
+}
+
 const DIFFS = {
   easy:   {label:'Easy',   nMin:1, nMax:3, hearts:5},
   medium: {label:'Medium', nMin:3, nMax:6, hearts:4},
@@ -254,7 +258,8 @@ let state = {
   mode:null, diffKey:null, diff:null,
   round:[], idx:0, totalQuestions:0, correct:0, wrong:0, hearts:0, maxHearts:0,
   timeLeft:0, timerId:null,
-  answered:false, selectedType:null, skipsLeft:0
+  answered:false, selectedType:null, skipsLeft:0,
+  reviewLog:[]
 };
 
 const el = {};
@@ -304,6 +309,11 @@ function cacheDom(){
   el.overSettings=document.getElementById('overSettings');
   el.playAgainBtn=document.getElementById('playAgainBtn');
   el.menuBtn=document.getElementById('menuBtn');
+
+  el.viewAnswersBtn=document.getElementById('viewAnswersBtn');
+  el.reviewModal=document.getElementById('reviewModal');
+  el.closeReview=document.getElementById('closeReview');
+  el.reviewList=document.getElementById('reviewList');
 }
 
 function showScreen(name){
@@ -357,6 +367,7 @@ function startGame(){
   state.idx=0; state.correct=0; state.wrong=0;
   state.skipsLeft = SKIPS_ALLOWED;
   state.hearts=state.diff.hearts; state.maxHearts=state.diff.hearts;
+  state.reviewLog = [];
   el.correctCount.textContent='0'; el.wrongCount.textContent='0';
   renderHearts();
   renderProgressDots();
@@ -496,7 +507,7 @@ function selectGrammar(index){
       b.style.pointerEvents='none';
       if(gId===q.correctGrammar) b.classList.add('correct');
     });
-    revealCorrect('identify', q, 'correct');
+    revealCorrect('identify', q, 'correct', index);
   } else {
     loseHeart();
     sfxWrongFunny();
@@ -506,7 +517,7 @@ function selectGrammar(index){
       if(gId===index) b.classList.add('wrong');
       if(gId===q.correctGrammar) b.classList.add('correct');
     });
-    revealCorrect('identify', q, 'wrong');
+    revealCorrect('identify', q, 'wrong', index);
   }
 }
 
@@ -524,13 +535,13 @@ function selectValidity(userSaysValid){
     state.correct++;
     sfxCorrect();
     (actuallyValid?el.validBtn:el.invalidBtn).classList.add('correct');
-    revealCorrect('validity', q, 'correct');
+    revealCorrect('validity', q, 'correct', userSaysValid);
   } else {
     loseHeart();
     sfxWrongFunny();
     (userSaysValid?el.validBtn:el.invalidBtn).classList.add('wrong');
     (actuallyValid?el.validBtn:el.invalidBtn).classList.add('correct');
-    revealCorrect('validity', q, 'wrong');
+    revealCorrect('validity', q, 'wrong', userSaysValid);
   }
 }
 
@@ -552,15 +563,31 @@ function handleTimeUp(){
     const actuallyValid=grammars[q.grammarIndex].validate(q.string).valid;
     (actuallyValid?el.validBtn:el.invalidBtn).classList.add('correct');
   }
-  revealCorrect(q.type, q, 'timeout');
+  revealCorrect(q.type, q, 'timeout', null);
 }
 
-function revealCorrect(type, q, status){
+function pushReviewEntry(type, q, status, userAnswer){
+  const entry = { qNum: state.idx+1, type, string:q.string, status };
+  if(type==='identify'){
+    entry.correctLabel = grammarLabel(q.correctGrammar);
+    entry.userLabel = status==='timeout' ? null : grammarLabel(userAnswer);
+  } else {
+    const actuallyValid = grammars[q.grammarIndex].validate(q.string).valid;
+    entry.correctLabel = actuallyValid ? 'Valid' : 'Invalid';
+    entry.grammarName = grammars[q.grammarIndex].name;
+    entry.userLabel = status==='timeout' ? null : (userAnswer ? 'Valid' : 'Invalid');
+  }
+  state.reviewLog.push(entry);
+}
+
+function revealCorrect(type, q, status, userAnswer){
   resultsByIndex[state.idx] = status==='correct';
   if(status!=='correct') state.wrong++;
   el.correctCount.textContent=state.correct;
   el.wrongCount.textContent=state.wrong;
   paintDots();
+
+  pushReviewEntry(type, q, status, userAnswer);
 
   const roundIsOver = (state.idx >= state.totalQuestions - 1) || state.hearts<=0;
   if(roundIsOver){
@@ -711,6 +738,53 @@ function endRound(){
   showScreen('over');
 }
 
+function statusIconSvg(status){
+  if(status==='correct') return `<svg class="icon" viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>`;
+  if(status==='timeout') return `<svg class="icon" viewBox="0 0 24 24"><path d="M12 20a8 8 0 100-16 8 8 0 000 16zm0-18a10 10 0 110 20 10 10 0 010-20zm.5 5H11v6l5.25 3.15.75-1.23-4.5-2.67z"/></svg>`;
+  return `<svg class="icon" viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>`;
+}
+
+function renderReviewList(){
+  if(state.reviewLog.length===0){
+    el.reviewList.innerHTML = `<p style="color:var(--paper-dim);">No answers recorded for this round.</p>`;
+    return;
+  }
+  const sorted = state.reviewLog.slice().sort((a,b)=>a.qNum-b.qNum);
+  el.reviewList.innerHTML = sorted.map(e=>{
+    const statusLabel = e.status==='correct' ? 'Correct' : e.status==='timeout' ? 'Timed Out' : 'Wrong';
+    const strDisplay = e.string==='' ? 'ε' : e.string;
+    const typeLabel = e.type==='identify' ? 'Identify Grammar' : 'Valid/Invalid';
+
+    let detail;
+    if(e.type==='identify'){
+      if(e.status==='correct'){
+        detail = `Correctly identified as <b>${e.correctLabel}</b>.`;
+      } else if(e.status==='timeout'){
+        detail = `Correct answer: <b class="ranswer-correct">${e.correctLabel}</b>. No answer submitted before time ran out.`;
+      } else {
+        detail = `Correct answer: <b class="ranswer-correct">${e.correctLabel}</b>. You picked <b class="ranswer-wrong">${e.userLabel}</b>.`;
+      }
+    } else {
+      if(e.status==='correct'){
+        detail = `Correctly marked <b>${e.correctLabel}</b> for ${e.grammarName}.`;
+      } else if(e.status==='timeout'){
+        detail = `Correct answer: <b class="ranswer-correct">${e.correctLabel}</b> for ${e.grammarName}. No answer submitted before time ran out.`;
+      } else {
+        detail = `Correct answer: <b class="ranswer-correct">${e.correctLabel}</b> for ${e.grammarName}. You picked <b class="ranswer-wrong">${e.userLabel}</b>.`;
+      }
+    }
+
+    return `<div class="review-item ${e.status}">
+      <div class="review-item-head">
+        <span class="review-item-num">Question ${e.qNum} · ${typeLabel}</span>
+        <span class="review-item-status">${statusIconSvg(e.status)} ${statusLabel}</span>
+      </div>
+      <div class="review-item-string">${strDisplay}</div>
+      <div class="review-item-detail">${detail}</div>
+    </div>`;
+  }).join('');
+}
+
 function bindEvents(){
   el.grammarBtns.forEach(btn=>{
     btn.addEventListener('click', ()=>{
@@ -726,6 +800,13 @@ function bindEvents(){
   el.quitBtn.addEventListener('click', ()=>{ stopTimer(); showScreen('menu'); });
   el.playAgainBtn.addEventListener('click', startGame);
   el.menuBtn.addEventListener('click', ()=> showScreen('menu'));
+
+  el.viewAnswersBtn.addEventListener('click', ()=>{
+    renderReviewList();
+    el.reviewModal.classList.add('open');
+  });
+  el.closeReview.addEventListener('click', ()=> el.reviewModal.classList.remove('open'));
+  el.reviewModal.addEventListener('click', e=>{ if(e.target===el.reviewModal) el.reviewModal.classList.remove('open'); });
 
   document.addEventListener('keydown', e=>{
     if(!document.getElementById('screen-game').classList.contains('active')) return;
