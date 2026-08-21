@@ -189,6 +189,12 @@ button{font-family:inherit;cursor:pointer;}
 .review-item-detail b{font-weight:700;}
 .review-item-detail .ranswer-correct{color:var(--green);}
 .review-item-detail .ranswer-wrong{color:var(--red-bright);}
+.review-item-full{margin-top:.75rem;display:flex;flex-direction:column;gap:.6rem;}
+.review-item-full .grammar-def-block,
+.review-item-full .derivation-block,
+.review-item-full .parse-tree-container{padding:.9rem 1rem;}
+.review-item-full .derivation-line{font-size:.86rem;}
+.review-item-full .tree-svg{transform:scale(.92);transform-origin:top center;}
 
 .game-top{
   position:sticky;top:0;z-index:20;background:rgba(7,7,11,.88);backdrop-filter:blur(10px);
@@ -372,6 +378,7 @@ button{font-family:inherit;cursor:pointer;}
   background:var(--panel);border:1px solid var(--line);border-radius:20px;
   padding:2.6rem 2.2rem;max-width:460px;width:100%;text-align:center;
   box-shadow:0 30px 80px -30px rgba(0,0,0,.6);
+  position:relative;z-index:1;
 }
 .over-grade{
   width:84px;height:84px;border-radius:50%;margin:0 auto 1rem;
@@ -380,13 +387,38 @@ button{font-family:inherit;cursor:pointer;}
   background:conic-gradient(var(--red) 0deg, var(--red-bright) 360deg);
   box-shadow:0 0 40px var(--red-glow);
 }
-.over-card h2{font-family:var(--font-head);margin:.3rem 0 1.4rem;}
+.over-grade.celebrate{animation:gradePulse 1.1s ease-in-out infinite;}
+@keyframes gradePulse{
+  0%,100%{transform:scale(1);box-shadow:0 0 40px var(--red-glow);}
+  50%{transform:scale(1.08);box-shadow:0 0 62px var(--red-glow);}
+}
+.over-card h2{font-family:var(--font-head);margin:.3rem 0 .5rem;}
+.over-congrats{
+  font-family:var(--font-mono);color:var(--paper-dim);font-size:.88rem;
+  margin:0 0 1.4rem;min-height:1.2em;
+}
 .over-stats-row{
   display:flex;justify-content:space-between;padding:.6rem 0;border-bottom:1px solid var(--line);
   font-size:.92rem;color:var(--paper-dim);
 }
 .over-stats-row b{color:var(--paper);font-family:var(--font-mono);}
 .over-actions{display:flex;flex-direction:column;gap:.7rem;margin-top:1.6rem;}
+
+/* Confetti / game-over celebration effect */
+.confetti-container{
+  position:fixed;inset:0;pointer-events:none;z-index:200;overflow:hidden;
+}
+.confetti-piece{
+  position:absolute;top:-24px;opacity:.95;
+  animation-name:confettiFall;
+  animation-timing-function:cubic-bezier(.35,0,.65,1);
+  animation-fill-mode:forwards;
+}
+@keyframes confettiFall{
+  0%{transform:translateY(0) rotate(0deg);opacity:1;}
+  85%{opacity:1;}
+  100%{transform:translateY(112vh) rotate(760deg);opacity:0;}
+}
 
 @media (max-width:480px){
   .game-top{padding:.7rem 1rem;}
