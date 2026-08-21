@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GRAMMAR ARENA</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+
+</head>
+<body>
+
+<div id="app">
+
+  <!-- ============================================================ MENU -->
+  <section id="screen-menu" class="screen active">
+    <div class="menu-wrap">
+      <div class="menu-badge">context-free grammar trainer</div>
+      <h1 class="menu-title">⟡ GRAMMAR <span>ARENA</span></h1>
+      <p class="menu-sub">Pick a mode and a difficulty, then race the clock to classify strings, build derivations, and reveal parse trees.</p>
+
+      <div class="menu-block">
+        <div class="menu-block-head"><span class="num">1</span> Choose Game Mode</div>
+        <div class="option-grid" id="modeGrid">
+          <button class="option-card" data-mode="identify">
+            <div class="oc-icon"><svg class="icon" viewBox="0 0 24 24"><path d="M12 2l7 4v6c0 5-3.4 8.6-7 10-3.6-1.4-7-5-7-10V6l7-4z"/></svg></div>
+            <div class="oc-title">Identify Grammar</div>
+            <div class="oc-desc">You get a string. Pick which of G₁–G₄ generates it (or None).</div>
+          </button>
+          <button class="option-card" data-mode="validity">
+            <div class="oc-icon"><svg class="icon" viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></div>
+            <div class="oc-title">Valid or Invalid</div>
+            <div class="oc-desc">You get a grammar + a string. Decide if the string is valid.</div>
+          </button>
+          <button class="option-card" data-mode="mixed">
+            <div class="oc-icon"><svg class="icon" viewBox="0 0 24 24"><path d="M6.99 11L3 15l3.99 4v-3H14v-2H6.99v-3zM21 9l-3.99-4v3H10v2h7.01v3L21 9z"/></svg></div>
+            <div class="oc-title">Mixed Challenge</div>
+            <div class="oc-desc">Random blend of both question types in one round.</div>
+          </button>
+        </div>
+      </div>
+
+      <div class="menu-block">
+        <div class="menu-block-head"><span class="num">2</span> Choose Difficulty</div>
+        <div class="option-grid" id="diffGrid">
+          <button class="option-card" data-diff="easy">
+            <div class="oc-icon"><svg class="icon" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/></svg></div>
+            <div class="oc-title">Easy</div>
+            <div class="oc-desc">Short strings · 5 hearts</div>
+            <span class="diff-tag easy">low pressure</span>
+          </button>
+          <button class="option-card" data-diff="medium">
+            <div class="oc-icon"><svg class="icon" viewBox="0 0 24 24"><path d="M13 2L3 14h7l-1 8 11-14h-7l1-6z"/></svg></div>
+            <div class="oc-title">Medium</div>
+            <div class="oc-desc">Longer strings · 4 hearts</div>
+            <span class="diff-tag medium">balanced</span>
+          </button>
+          <button class="option-card" data-diff="hard">
+            <div class="oc-icon"><svg class="icon" viewBox="0 0 24 24"><path d="M12 .587l3.668 7.568 8.332 1.151-6.064 5.828 1.48 8.279L12 19.771l-7.416 3.642 1.48-8.279L0 9.306l8.332-1.151z"/></svg></div>
+            <div class="oc-title">Hard</div>
+            <div class="oc-desc">Long strings · 3 hearts</div>
+            <span class="diff-tag hard">high pressure</span>
+          </button>
+        </div>
+      </div>
+
+      <button class="primary-btn" id="startBtn" disabled>
+        <svg class="icon" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+        Start Game
+      </button>
+      <button class="ghost-btn" id="howToBtn">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+        Grammar Reference &amp; Rules
+      </button>
+    </div>
+  </section>
+
+  <!-- ============================================================ HOWTO MODAL -->
+  <div class="modal-backdrop" id="howtoModal">
+    <div class="modal-card">
+      <button class="modal-close" id="closeHowTo">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+      </button>
+      <h2><svg class="icon" viewBox="0 0 24 24" style="color:var(--red-bright)"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17h-2v-2h2v2zm2.07-7.75l-.9.92C13.45 12.9 13 13.5 13 15h-2v-.5c0-1.1.45-2.1 1.17-2.83l1.24-1.26c.37-.36.59-.86.59-1.41 0-1.1-.9-2-2-2s-2 .9-2 2H8c0-2.21 1.79-4 4-4s4 1.79 4 4c0 .88-.36 1.68-.93 2.25z"/></svg> Grammar Reference</h2>
+      <div class="gref-card"><div class="gref-name">G₁</div><div class="gref-prod">S → a S b | ε &nbsp;(equal a's then equal b's)</div></div>
+      <div class="gref-card"><div class="gref-name">G₂</div><div class="gref-prod">S → a S | b &nbsp;(any a's, ending in one b)</div></div>
+      <div class="gref-card"><div class="gref-name">G₃</div><div class="gref-prod">S → a S a | b S b | ε &nbsp;(even-length palindromes)</div></div>
+      <div class="gref-card"><div class="gref-name">G₄</div><div class="gref-prod">S → a S | b S | ε &nbsp;(any string over {a, b})</div></div>
+      <p style="color:var(--paper-dim);font-size:.9rem;">Answer correctly to unlock the full formal grammar (V, T, S, P, G), the leftmost derivation, and the parse tree. Picking a wrong option costs a heart immediately and reveals the correct answer. Letting the clock hit zero does the same — a heart and a reveal. Nothing advances on its own; hit "Next Question" yourself when you're ready — except after the very last question, which jumps straight to your score.</p>
+      <p style="color:var(--paper-dim);font-size:.9rem;">Clock: 10s for Valid/Invalid questions, 12s for Identify Grammar questions (Mixed rounds use whichever applies per question).</p>
+      <div class="kbd-row">Keys: 1–5 = pick grammar · V/I = valid/invalid · Enter = next · R = restart round</div>
+    </div>
+  </div>
+
+  <!-- ============================================================ GAME -->
+  <section id="screen-game" class="screen">
+    <header class="game-top">
+      <div class="brand">⟡ GRAMMAR <span>ARENA</span></div>
+      <div class="stat-cluster">
+        <div class="hearts-row" id="heartsDisplay"></div>
+        <div class="timer-wrap">
+          <div class="timer-track"><div class="timer-fill" id="timerFill"></div></div>
+          <span id="timerNum">15</span>
+        </div>
+        <div class="score-mini"><span class="ok" id="correctCount">0</span>/<span class="bad" id="wrongCount">0</span></div>
+      </div>
+      <button class="icon-btn-sm" id="quitBtn">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/></svg>
+        Quit
+      </button>
+    </header>
+
+    <div class="progress-strip" id="progressDots"></div>
+
+    <main class="game-main">
+      <div class="q-counter" id="questionCounter">Question 1 of 10</div>
+      <div class="q-mode-label" id="modeLabel"></div>
+      <div class="grammar-display" id="grammarDisplay" style="display:none;"></div>
+
+      <div class="string-card">
+        <div class="string-display" id="currentString">ab</div>
+      </div>
+      <div class="hint" id="hintText"></div>
+
+      <div class="grammar-select-grid" id="grammarGrid">
+        <div class="grammar-select-btn" data-grammar="0"><span class="g-label">G₁</span>S → a S b | ε</div>
+        <div class="grammar-select-btn" data-grammar="1"><span class="g-label">G₂</span>S → a S | b</div>
+        <div class="grammar-select-btn" data-grammar="2"><span class="g-label">G₃</span>S → a S a | b S b | ε</div>
+        <div class="grammar-select-btn" data-grammar="3"><span class="g-label">G₄</span>S → a S | b S | ε</div>
+        <div class="grammar-select-btn none-btn" data-grammar="-1">None of these (invalid string)</div>
+      </div>
+
+      <div class="validity-buttons" id="validityButtons" style="display:none;">
+        <button class="validity-btn valid-btn" id="validBtn">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+          Valid
+          <span class="sub">generated by the grammar</span>
+        </button>
+        <button class="validity-btn invalid-btn" id="invalidBtn">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+          Invalid
+          <span class="sub">not generated by the grammar</span>
+        </button>
+      </div>
+
+      <div class="result-panel" id="resultPanel">
+        <div id="resultMsg"></div>
+        <div id="feedbackMsg"></div>
+        <div id="grammarDefBlock" class="grammar-def-block"></div>
+        <div id="derivationBlock" class="derivation-block"></div>
+        <div id="parseTreeDisplay" class="parse-tree-container"></div>
+      </div>
+
+      <button class="primary-btn next-btn" id="nextBtn" disabled>
+        Next Question
+        <svg class="icon" viewBox="0 0 24 24"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>
+      </button>
+    </main>
+  </section>
+
+  <!-- ============================================================ GAME OVER -->
+  <section id="screen-over" class="screen">
+    <div class="over-wrap">
+      <div class="over-card">
+        <div class="over-grade" id="overGrade">A</div>
+        <h2>Round Complete</h2>
+        <div id="overStats">
+          <div class="over-stats-row"><span>Correct</span><b id="overCorrect">0</b></div>
+          <div class="over-stats-row"><span>Wrong</span><b id="overWrong">0</b></div>
+          <div class="over-stats-row"><span>Accuracy</span><b id="overAcc">0%</b></div>
+          <div class="over-stats-row"><span>Hearts remaining</span><b id="overHearts">0</b></div>
+          <div class="over-stats-row"><span>Mode / Difficulty</span><b id="overSettings">-</b></div>
+        </div>
+        <div class="over-actions">
+          <button class="primary-btn" id="playAgainBtn">
+            <svg class="icon" viewBox="0 0 24 24"><path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/></svg>
+            Play Again
+          </button>
+          <button class="ghost-btn" id="menuBtn" style="margin:0;justify-content:center;">Back to Menu</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<script src="script.js" defer></script>
+
+</body>
+</html>
