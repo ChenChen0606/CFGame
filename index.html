@@ -90,7 +90,8 @@
       <div class="gref-card"><div class="gref-name">G₄</div><div class="gref-prod">S → a S | b S | ε &nbsp;(any string over {a, b})</div></div>
       <p style="color:var(--paper-dim);font-size:.9rem;">Answer correctly to unlock the full formal grammar (V, T, S, P, G), the leftmost derivation, and the parse tree. Picking a wrong option costs a heart immediately and reveals the correct answer. Letting the clock hit zero does the same — a heart and a reveal. Nothing advances on its own; hit "Next Question" yourself when you're ready — except after the very last question, which jumps straight to your score.</p>
       <p style="color:var(--paper-dim);font-size:.9rem;">Clock: 10s for Valid/Invalid questions, 12s for Identify Grammar questions (Mixed rounds use whichever applies per question).</p>
-      <div class="kbd-row">Keys: 1–5 = pick grammar · V/I = valid/invalid · Enter = next · R = restart round</div>
+      <p style="color:var(--paper-dim);font-size:.9rem;">Not sure yet? Hit Skip — it sends the question to the back of the line instead of answering it. It doesn't count as right or wrong, and the round still won't end until you've actually answered all 10; the skipped one just comes back around later.</p>
+      <div class="kbd-row">Keys: 1–5 = pick grammar · V/I = valid/invalid · S = skip · Enter = next · R = restart round</div>
     </div>
   </div>
 
@@ -122,7 +123,13 @@
       <div class="string-card">
         <div class="string-display" id="currentString">ab</div>
       </div>
-      <div class="hint" id="hintText"></div>
+      <div class="hint-row">
+        <div class="hint" id="hintText"></div>
+        <button class="skip-btn" id="skipBtn" title="Skip — comes back later, doesn't count against you">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M6 5v14l8.5-7L6 5zm10 0v14h2V5h-2z"/></svg>
+          Skip
+        </button>
+      </div>
 
       <div class="grammar-select-grid" id="grammarGrid">
         <div class="grammar-select-btn" data-grammar="0"><span class="g-label">G₁</span>S → a S b | ε</div>
