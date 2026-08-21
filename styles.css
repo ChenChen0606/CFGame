@@ -161,6 +161,35 @@ button{font-family:inherit;cursor:pointer;}
 .gref-card .gref-prod{font-family:var(--font-mono);font-size:.92rem;color:var(--paper);}
 .kbd-row{color:var(--paper-dim);font-size:.82rem;margin-top:1.2rem;font-family:var(--font-mono);}
 
+/* Answer review modal */
+.review-modal-card{max-width:720px;}
+.review-list{display:flex;flex-direction:column;gap:.7rem;margin-top:.6rem;}
+.review-item{
+  background:var(--bg2);border:1px solid var(--line);border-left:3px solid var(--line-bright);
+  border-radius:10px;padding:.85rem 1rem;
+}
+.review-item.correct{border-left-color:var(--green);}
+.review-item.wrong{border-left-color:var(--red);}
+.review-item.timeout{border-left-color:var(--amber);}
+.review-item-head{
+  display:flex;align-items:center;justify-content:space-between;gap:.6rem;flex-wrap:wrap;margin-bottom:.4rem;
+}
+.review-item-num{font-family:var(--font-mono);color:var(--paper-dim);font-size:.78rem;}
+.review-item-status{
+  font-family:var(--font-head);font-weight:700;font-size:.8rem;letter-spacing:.03em;text-transform:uppercase;
+  padding:.15rem .55rem;border-radius:999px;
+}
+.review-item.correct .review-item-status{color:var(--green);background:rgba(51,209,122,.12);}
+.review-item.wrong .review-item-status{color:var(--red-bright);background:rgba(255,45,63,.12);}
+.review-item.timeout .review-item-status{color:var(--amber);background:rgba(255,176,32,.12);}
+.review-item-string{
+  font-family:var(--font-mono);font-size:1.1rem;font-weight:700;margin-bottom:.35rem;word-break:break-all;
+}
+.review-item-detail{color:var(--paper-dim);font-size:.85rem;line-height:1.55;}
+.review-item-detail b{font-weight:700;}
+.review-item-detail .ranswer-correct{color:var(--green);}
+.review-item-detail .ranswer-wrong{color:var(--red-bright);}
+
 .game-top{
   position:sticky;top:0;z-index:20;background:rgba(7,7,11,.88);backdrop-filter:blur(10px);
   border-bottom:1px solid var(--line);
