@@ -89,6 +89,7 @@
       <p style="color:var(--paper-dim);font-size:.9rem;">Answer correctly to unlock the full formal grammar (V, T, S, P, G), the leftmost derivation, and the parse tree. Picking a wrong option costs a heart immediately and reveals the correct answer. Letting the clock hit zero does the same — a heart and a reveal. Nothing advances on its own; hit "Next Question" yourself when you're ready — except after the very last question, which jumps straight to your score.</p>
       <p style="color:var(--paper-dim);font-size:.9rem;">Clock: 10s for Valid/Invalid questions, 12s for Identify Grammar questions (Mixed rounds use whichever applies per question).</p>
       <p style="color:var(--paper-dim);font-size:.9rem;">Not sure yet? Hit Skip — it sends the question to the back of the line instead of answering it. It doesn't count as right or wrong, and the round still won't end until you've actually answered all 10; the skipped one just comes back around later.</p>
+      <p style="color:var(--paper-dim);font-size:.9rem;">Once the round ends, hit "View All Answers" on the score screen to see every question you faced, what you answered, and what the correct answer was.</p>
       <div class="kbd-row">Keys: 1–5 = pick grammar · V/I = valid/invalid · S = skip · Enter = next · R = restart round</div>
     </div>
   </div>
@@ -181,12 +182,26 @@
             <svg class="icon" viewBox="0 0 24 24"><path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/></svg>
             Play Again
           </button>
+          <button class="ghost-btn" id="viewAnswersBtn" style="margin:0;justify-content:center;">
+            <svg class="icon" viewBox="0 0 24 24"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zm0 12.5a5 5 0 110-10 5 5 0 010 10zm0-8a3 3 0 100 6 3 3 0 000-6z"/></svg>
+            View All Answers
+          </button>
           <button class="ghost-btn" id="menuBtn" style="margin:0;justify-content:center;">Back to Menu</button>
         </div>
       </div>
     </div>
   </section>
 
+</div>
+
+<div class="modal-backdrop" id="reviewModal">
+  <div class="modal-card review-modal-card">
+    <button class="modal-close" id="closeReview">
+      <svg class="icon" viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+    </button>
+    <h2><svg class="icon" viewBox="0 0 24 24" style="color:var(--red-bright)"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zm0 12.5a5 5 0 110-10 5 5 0 010 10zm0-8a3 3 0 100 6 3 3 0 000-6z"/></svg> Answer Review</h2>
+    <div class="review-list" id="reviewList"></div>
+  </div>
 </div>
 
 <script src="script.js" defer></script>
