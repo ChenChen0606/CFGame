@@ -1,11 +1,6 @@
 (function(){
 'use strict';
 
-// ============================================================
-// SOUND ENGINE — fully synthesized with Web Audio API.
-// No external audio files/CDN needed, so nothing to ever 404 —
-// every effect below is generated on the fly.
-// ============================================================
 let actx = null;
 function getCtx(){
   if(!actx){
@@ -16,8 +11,6 @@ function getCtx(){
   if(actx.state === 'suspended') actx.resume();
   return actx;
 }
-// Call on the first real user gesture (Start Game click) so mobile
-// browsers unlock audio before we ever try to play anything.
 function unlockAudio(){ getCtx(); }
 
 function playTone(ctx, {freq, type='sine', start=0, dur=0.15, gain=0.2, freqEnd=null, attack=0.006, release=0.09, detune=0}){
@@ -36,27 +29,25 @@ function playTone(ctx, {freq, type='sine', start=0, dur=0.15, gain=0.2, freqEnd=
   osc.stop(t0+dur+release+0.03);
 }
 
-// Soft tick during normal countdown — pitch creeps up as urgency rises.
 function sfxTick(urgency){
   const ctx=getCtx(); if(!ctx) return;
   playTone(ctx,{freq:640+urgency*420, type:'square', dur:0.04, gain:0.10+urgency*0.06, release:0.03});
 }
-// Low, trailing "heartbeat" pulse for the critical final seconds —
-// long exponential release so it lingers (nakakaba / suspenseful),
-// paired with a faint high shimmer just after for tension.
+  
 function sfxCriticalPulse(){
   const ctx=getCtx(); if(!ctx) return;
   playTone(ctx,{freq:92,  type:'sine',   dur:0.09, gain:0.38, release:0.42});
   playTone(ctx,{freq:184, type:'sine',   dur:0.06, gain:0.14, release:0.30});
   playTone(ctx,{freq:1500,type:'sine',   dur:0.02, gain:0.05, release:0.28, start:0.10});
 }
-// Bright ascending 4-note chime for a correct answer.
+  
 function sfxCorrect(){
   const ctx=getCtx(); if(!ctx) return;
   [523.25,659.25,783.99,1046.50].forEach((f,i)=>
     playTone(ctx,{freq:f, type:'triangle', start:i*0.07, dur:0.11, gain:0.20, release:0.14}));
 }
-// Comedic descending "wah-wah-wah-waaah" sad-trombone for a wrong answer.
+
+  
 function sfxWrongFunny(){
   const ctx=getCtx(); if(!ctx) return;
   const notes=[329.63,293.66,261.63,220.00];
@@ -77,23 +68,23 @@ function sfxWrongFunny(){
     osc.start(t0); osc.stop(t0+0.36);
   });
 }
-// Harsher buzzer for the clock hitting zero — distinct from the funny
-// wrong-answer sound so players learn to tell "I clicked wrong" apart
-// from "I ran out of time".
+  
 function sfxTimeout(){
   const ctx=getCtx(); if(!ctx) return;
   [0,0.13,0.26].forEach(t=> playTone(ctx,{freq:170, type:'square', start:t, dur:0.10, gain:0.28, release:0.05}));
 }
-// Little fanfare for the round-complete screen.
+  
 function sfxRoundOver(){
   const ctx=getCtx(); if(!ctx) return;
   [392.00,523.25,659.25,784.00].forEach((f,i)=>
     playTone(ctx,{freq:f, type:'triangle', start:i*0.1, dur:0.16, gain:0.18, release:0.2}));
 }
-
-// ============================================================
-// GRAMMARS — validation, tree-building, and derivation tracing
-// ============================================================
+  
+function sfxSkip(){
+  const ctx=getCtx(); if(!ctx) return;
+  playTone(ctx,{freq:500, type:'sine', dur:0.09, gain:0.14, freqEnd:900, release:0.05});
+}
+  
 const grammars = [
   {
     id:0, name:'G₁', display:'S → a S b | ε',
@@ -198,9 +189,7 @@ const grammars = [
   }
 ];
 
-// ============================================================
-// DIFFICULTY CONFIG
-// ============================================================
+  
 const DIFFS = {
   easy:   {label:'Easy',   nMin:1, nMax:3, hearts:5},
   medium: {label:'Medium', nMin:3, nMax:6, hearts:4},
@@ -208,9 +197,7 @@ const DIFFS = {
 };
 const QUESTIONS_PER_ROUND = 10;
 
-// ============================================================
-// QUESTION POOL GENERATION
-// ============================================================
+  
 function randInt(min,max){ return Math.floor(Math.random()*(max-min+1))+min; }
 function randStr(len){ let s=''; for(let i=0;i<len;i++) s+= Math.random()<0.5?'a':'b'; return s; }
 function shuffle(arr){ const a=arr.slice(); for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
@@ -264,19 +251,15 @@ function buildValidityPool(diff){
   return pool;
 }
 
-// ============================================================
-// STATE
-// ============================================================
+  
 let state = {
   mode:null, diffKey:null, diff:null,
-  round:[], idx:0, correct:0, wrong:0, hearts:0, maxHearts:0,
+  round:[], idx:0, totalQuestions:0, correct:0, wrong:0, hearts:0, maxHearts:0,
   timeLeft:0, timerId:null,
   answered:false, selectedType:null
 };
 
-// ============================================================
-// DOM
-// ============================================================
+  
 const el = {};
 function cacheDom(){
   el.screenMenu=document.getElementById('screen-menu');
@@ -302,6 +285,7 @@ function cacheDom(){
   el.grammarDisplay=document.getElementById('grammarDisplay');
   el.currentString=document.getElementById('currentString');
   el.hintText=document.getElementById('hintText');
+  el.skipBtn=document.getElementById('skipBtn');
   el.grammarGrid=document.getElementById('grammarGrid');
   el.grammarBtns=document.querySelectorAll('.grammar-select-btn');
   el.validityButtons=document.getElementById('validityButtons');
@@ -374,9 +358,12 @@ function pickRound(){
 }
 
 function startGame(){
-  unlockAudio(); // resume/create the AudioContext on this real click, per mobile autoplay rules
+  unlockAudio(); 
+  
   state.diff = DIFFS[state.diffKey];
+  
   state.round = pickRound();
+  state.totalQuestions = state.round.length;
   state.idx=0; state.correct=0; state.wrong=0;
   state.hearts=state.diff.hearts; state.maxHearts=state.diff.hearts;
   el.correctCount.textContent='0'; el.wrongCount.textContent='0';
@@ -386,9 +373,7 @@ function startGame(){
   loadQuestion();
 }
 
-// ============================================================
-// HEARTS / TIMER
-// ============================================================
+  
 function renderHearts(){
   el.heartsDisplay.innerHTML='';
   for(let i=0;i<state.maxHearts;i++){
@@ -413,14 +398,12 @@ function updateTimerUI(){
   el.timerFill.classList.toggle('critical', state.timeLeft<=total*0.15);
 }
 function stopTimer(){ if(state.timerId){ clearInterval(state.timerId); state.timerId=null; } }
-// Time per question is fixed by question type, not by difficulty:
-// Valid/Invalid questions move faster (10s) than Identify Grammar
-// questions (12s) — this applies inside Mixed rounds too, since each
-// question there is tagged with its own type.
+
+  
 const TIME_BY_TYPE = { validity:10, identify:12 };
 function startTimer(){
   stopTimer();
-  const q=state.round[state.idx];
+  const q=state.round[0];
   state.timeTotal = TIME_BY_TYPE[q.type] || 12;
   state.timeLeft=state.timeTotal;
   updateTimerUI();
@@ -428,22 +411,18 @@ function startTimer(){
     state.timeLeft -= 1;
     if(state.timeLeft<=0){ state.timeLeft=0; updateTimerUI(); stopTimer(); handleTimeUp(); return; }
     updateTimerUI();
-    // Suspenseful audio feedback: quick ticks that get sharper as time
-    // runs low, switching to a low trailing "heartbeat" pulse once
-    // the clock hits the critical zone.
+    
     const urgency = 1 - (state.timeLeft/state.timeTotal);
     if(state.timeLeft<=state.timeTotal*0.15) sfxCriticalPulse();
     else sfxTick(urgency);
   },1000);
 }
 
-// ============================================================
-// PROGRESS DOTS
-// ============================================================
+  
 let resultsByIndex={};
 function renderProgressDots(){
   let html='';
-  for(let i=0;i<state.round.length;i++) html+=`<span class="dot" data-i="${i}"></span>`;
+  for(let i=0;i<state.totalQuestions;i++) html+=`<span class="dot" data-i="${i}"></span>`;
   el.progressDots.innerHTML=html;
   resultsByIndex={};
   paintDots();
@@ -457,9 +436,7 @@ function paintDots(){
   });
 }
 
-// ============================================================
-// LOAD QUESTION
-// ============================================================
+  
 function colorizeString(str){
   if(str==='') return '<span style="opacity:.6">ε</span>';
   return str.split('').map(ch=> ch==='a' ? `<span class="token-a">a</span>` : ch==='b' ? `<span class="token-b">b</span>` : ch).join('');
@@ -468,16 +445,19 @@ function colorizeString(str){
 function loadQuestion(){
   stopTimer();
   if(state.hearts<=0){ endRound(); return; }
-  if(state.idx>=state.round.length){ endRound(); return; }
+  if(state.round.length===0){ endRound(); return; }
 
-  const q=state.round[state.idx];
+  const q=state.round[0];
   state.answered=false;
 
-  el.questionCounter.textContent=`Question ${state.idx+1} of ${state.round.length}`;
+  el.questionCounter.textContent=`Question ${state.idx+1} of ${state.totalQuestions}`;
   el.resultPanel.classList.remove('show');
   el.grammarDefBlock.innerHTML=''; el.derivationBlock.innerHTML=''; el.parseTreeDisplay.innerHTML='';
   el.resultMsg.innerHTML=''; el.feedbackMsg.textContent='';
   el.nextBtn.disabled=true;
+
+  el.skipBtn.style.display='inline-flex';
+  el.skipBtn.disabled = state.round.length<=1;
 
   if(q.type==='identify'){
     el.modeLabel.innerHTML=`<svg class="icon" viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg> Identify the Grammar`;
@@ -512,18 +492,14 @@ function loadQuestion(){
   startTimer();
 }
 
-// ============================================================
-// ANSWERING — IDENTIFY MODE
-// A wrong pick is now terminal for the question: no more time
-// penalty / retry — it costs a heart immediately and the correct
-// answer is revealed right away, same as a timeout.
-// ============================================================
+
 function selectGrammar(index){
   if(state.answered) return;
-  const q=state.round[state.idx];
+  const q=state.round[0];
 
   state.answered=true;
   stopTimer();
+  el.skipBtn.style.display='none';
 
   if(index===q.correctGrammar){
     state.correct++;
@@ -547,17 +523,14 @@ function selectGrammar(index){
   }
 }
 
-// ============================================================
-// ANSWERING — VALIDITY MODE
-// Same rule: one wrong tap costs a heart and reveals the answer.
-// ============================================================
 function selectValidity(userSaysValid){
   if(state.answered) return;
-  const q=state.round[state.idx];
+  const q=state.round[0];
   const actuallyValid=grammars[q.grammarIndex].validate(q.string).valid;
 
   state.answered=true;
   stopTimer();
+  el.skipBtn.style.display='none';
   el.validBtn.disabled=true; el.invalidBtn.disabled=true;
 
   if(userSaysValid===actuallyValid){
@@ -574,15 +547,13 @@ function selectValidity(userSaysValid){
   }
 }
 
-// ============================================================
-// TIME UP
-// ============================================================
 function handleTimeUp(){
   if(state.answered) return;
   state.answered=true;
+  el.skipBtn.style.display='none';
   loseHeart();
   sfxTimeout();
-  const q=state.round[state.idx];
+  const q=state.round[0];
   if(q.type==='identify'){
     el.grammarBtns.forEach(b=>{
       const gId=parseInt(b.dataset.grammar,10);
@@ -597,21 +568,14 @@ function handleTimeUp(){
   revealCorrect(q.type, q, 'timeout');
 }
 
-// ============================================================
-// REVEAL — shared: grammar def / derivation / parse tree
-// status is one of: 'correct' | 'wrong' | 'timeout'
-// ============================================================
 function revealCorrect(type, q, status){
   resultsByIndex[state.idx] = status==='correct';
   if(status!=='correct') state.wrong++;
   el.correctCount.textContent=state.correct;
   el.wrongCount.textContent=state.wrong;
   paintDots();
-
-  // Round is over the moment this was the last question, or hearts
-  // hit zero — skip the per-question reveal panel and jump straight
-  // to the score screen instead of waiting for a "Next Question" click.
-  const roundIsOver = (state.idx >= state.round.length - 1) || state.hearts<=0;
+  
+  const roundIsOver = (state.idx >= state.totalQuestions - 1) || state.hearts<=0;
   if(roundIsOver){
     endRound();
     return;
@@ -662,9 +626,7 @@ function revealCorrect(type, q, status){
 
   el.resultPanel.classList.add('show');
   el.nextBtn.disabled=false;
-  // NOTE: intentionally no auto-advance timer here anymore — the
-  // round only moves on when the player actually clicks "Next
-  // Question" (this was the bug where it jumped ahead on its own).
+
 }
 
 function renderGrammarDef(g){
@@ -689,9 +651,7 @@ function renderDerivation(g, str){
   return `<div class="gdb-title">Leftmost Derivation</div><div class="derivation-line">${line}</div>`;
 }
 
-// ============================================================
-// PARSE TREE SVG
-// ============================================================
+  
 function layoutTree(root){
   let nextX=0; const H_GAP=78, V_GAP=88;
   function assign(node, depth){
@@ -733,10 +693,19 @@ function buildTreeSVG(root){
   return svg;
 }
 
-// ============================================================
-// ADVANCE / END ROUND
-// ============================================================
+  
+function skipQuestion(){
+  if(state.answered) return;
+  if(state.round.length<=1) return;
+  stopTimer();
+  sfxSkip();
+  state.round.push(state.round.shift());
+  loadQuestion();
+}
+
+  
 function advance(){
+  state.round.shift(); 
   state.idx++;
   loadQuestion();
 }
@@ -756,9 +725,7 @@ function endRound(){
   showScreen('over');
 }
 
-// ============================================================
-// EVENTS
-// ============================================================
+  
 function bindEvents(){
   el.grammarBtns.forEach(btn=>{
     btn.addEventListener('click', ()=>{
@@ -769,6 +736,7 @@ function bindEvents(){
   });
   el.validBtn.addEventListener('click', ()=> selectValidity(true));
   el.invalidBtn.addEventListener('click', ()=> selectValidity(false));
+  el.skipBtn.addEventListener('click', skipQuestion);
   el.nextBtn.addEventListener('click', advance);
   el.quitBtn.addEventListener('click', ()=>{ stopTimer(); showScreen('menu'); });
   el.playAgainBtn.addEventListener('click', startGame);
@@ -778,7 +746,8 @@ function bindEvents(){
     if(!document.getElementById('screen-game').classList.contains('active')) return;
     if(e.key==='r' || e.key==='R'){ startGame(); return; }
     if(!state.answered){
-      const q=state.round[state.idx];
+      const q=state.round[0];
+      if(e.key==='s'||e.key==='S'){ skipQuestion(); return; }
       if(q.type==='identify'){
         if(e.key>='1' && e.key<='4') selectGrammar(parseInt(e.key,10)-1);
         else if(e.key==='5' || e.key==='0') selectGrammar(-1);
