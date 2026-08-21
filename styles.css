@@ -1,6 +1,3 @@
-/* ============================================================
-   GRAMMAR ARENA — theme: red / dark, "competitive dev-game" look
-   ============================================================ */
 :root{
   --bg:#07070b;
   --bg2:#0c0c13;
@@ -60,11 +57,9 @@ body::after{
 button{font-family:inherit;cursor:pointer;}
 .icon{width:1em;height:1em;fill:currentColor;flex-shrink:0;}
 
-/* ---------------- screens ---------------- */
 .screen{display:none;min-height:100vh;}
 .screen.active{display:block;}
 
-/* ---------------- MENU ---------------- */
 .menu-wrap{
   max-width:880px;margin:0 auto;padding:4.5rem 1.5rem 4rem;
   display:flex;flex-direction:column;align-items:center;text-align:center;
@@ -143,7 +138,6 @@ button{font-family:inherit;cursor:pointer;}
 }
 .ghost-btn:hover{border-color:var(--line-bright);color:var(--paper);}
 
-/* ---------------- modal (grammar reference) ---------------- */
 .modal-backdrop{
   position:fixed;inset:0;background:rgba(3,3,6,.8);backdrop-filter:blur(3px);
   display:none;align-items:center;justify-content:center;z-index:50;padding:1.2rem;
@@ -167,7 +161,6 @@ button{font-family:inherit;cursor:pointer;}
 .gref-card .gref-prod{font-family:var(--font-mono);font-size:.92rem;color:var(--paper);}
 .kbd-row{color:var(--paper-dim);font-size:.82rem;margin-top:1.2rem;font-family:var(--font-mono);}
 
-/* ---------------- GAME SCREEN ---------------- */
 .game-top{
   position:sticky;top:0;z-index:20;background:rgba(7,7,11,.88);backdrop-filter:blur(10px);
   border-bottom:1px solid var(--line);
@@ -345,7 +338,6 @@ button{font-family:inherit;cursor:pointer;}
 
 .next-btn{width:100%;margin-top:1.3rem;}
 
-/* ---------------- GAME OVER ---------------- */
 .over-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:2rem 1.2rem;}
 .over-card{
   background:var(--panel);border:1px solid var(--line);border-radius:20px;
