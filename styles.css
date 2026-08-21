@@ -240,7 +240,17 @@ button{font-family:inherit;cursor:pointer;}
 .token-a{color:var(--tok-a);}
 .token-b{color:var(--tok-b);}
 
-.hint{text-align:center;color:var(--paper-dim);font-size:.88rem;margin-bottom:1.5rem;}
+.hint-row{display:flex;align-items:center;justify-content:center;gap:.7rem;margin-bottom:1.5rem;flex-wrap:wrap;}
+.hint{text-align:center;color:var(--paper-dim);font-size:.88rem;margin-bottom:0;}
+.skip-btn{
+  background:var(--panel2);border:1px solid var(--line);color:var(--paper-dim);
+  border-radius:999px;padding:.35rem .9rem;font-size:.78rem;font-weight:600;
+  display:inline-flex;align-items:center;gap:.35rem;
+  transition:border-color .15s, color .15s, opacity .15s, transform .12s;
+}
+.skip-btn .icon{width:14px;height:14px;}
+.skip-btn:hover:not(:disabled){border-color:var(--red);color:var(--red-bright);transform:translateY(-1px);}
+.skip-btn:disabled{opacity:.35;cursor:not-allowed;}
 
 .grammar-select-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:.7rem;margin-bottom:1.2rem;}
 @media (max-width:520px){.grammar-select-grid{grid-template-columns:1fr;}}
