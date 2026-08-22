@@ -200,6 +200,9 @@ const DIFFS = {
 };
 const QUESTIONS_PER_ROUND = 10;
 const SKIPS_ALLOWED = 2;
+// Minimum number of "None of these (invalid string)" questions guaranteed
+// per round (or per half-round in Mixed mode) for Identify Grammar questions.
+const MIN_INVALID_IDENTIFY = 3;
 
 function randInt(min,max){ return Math.floor(Math.random()*(max-min+1))+min; }
 function randStr(len){ let s=''; for(let i=0;i<len;i++) s+= Math.random()<0.5?'a':'b'; return s; }
@@ -241,7 +244,10 @@ function buildIdentifyPool(diff){
     const n=randInt(nMin,nMax);
     add(makeG1(n),0); add(makeG2(n),1); add(makeG3(n),2); add(makeG4(Math.max(1,n)),3);
   }
-  for(let i=0;i<6;i++) add(makeInvalid(randInt(nMin+1,nMax+1)),-1);
+  // Generate a generous batch of invalid ("None of these") strings so that
+  // every round has enough to sample MIN_INVALID_IDENTIFY from, even after
+  // de-duplication.
+  for(let i=0;i<16;i++) add(makeInvalid(randInt(nMin+1,nMax+1)),-1);
   return pool;
 }
 function buildValidityPool(diff){
@@ -259,7 +265,7 @@ let state = {
   round:[], idx:0, totalQuestions:0, correct:0, wrong:0, hearts:0, maxHearts:0,
   timeLeft:0, timerId:null,
   answered:false, selectedType:null, skipsLeft:0,
-  reviewLog:[]
+  reviewLog:[], finishPending:false
 };
 
 const el = {};
@@ -346,14 +352,29 @@ function initMenu(){
 }
 function updateStartBtn(){ el.startBtn.disabled = !(state.mode && state.diffKey); }
 
+// Pick `count` identify-mode questions from `pool`, guaranteeing at least
+// MIN_INVALID_IDENTIFY "None of these" (invalid string) questions whenever
+// the pool and the requested count allow it.
+function pickIdentifySubset(pool, count){
+  const invalids = shuffle(pool.filter(q=>q.correctGrammar===-1));
+  const valids = shuffle(pool.filter(q=>q.correctGrammar!==-1));
+  const wantInvalid = Math.min(MIN_INVALID_IDENTIFY, invalids.length, count);
+  const chosenInvalid = invalids.slice(0, wantInvalid);
+  const remaining = count - chosenInvalid.length;
+  const chosenValid = valids.slice(0, remaining);
+  return shuffle([...chosenInvalid, ...chosenValid]);
+}
+
 function pickRound(){
   const diff = DIFFS[state.diffKey];
   const identifyPool = buildIdentifyPool(diff);
   const validityPool = buildValidityPool(diff);
-  if(state.mode==='identify') return shuffle(identifyPool).slice(0,QUESTIONS_PER_ROUND).map(q=>({type:'identify',...q}));
+  if(state.mode==='identify'){
+    return pickIdentifySubset(identifyPool, QUESTIONS_PER_ROUND).map(q=>({type:'identify',...q}));
+  }
   if(state.mode==='validity') return shuffle(validityPool).slice(0,QUESTIONS_PER_ROUND).map(q=>({type:'validity',...q}));
   const half=QUESTIONS_PER_ROUND/2;
-  const a=shuffle(identifyPool).slice(0,half).map(q=>({type:'identify',...q}));
+  const a=pickIdentifySubset(identifyPool, half).map(q=>({type:'identify',...q}));
   const b=shuffle(validityPool).slice(0,half).map(q=>({type:'validity',...q}));
   return shuffle([...a,...b]);
 }
@@ -368,6 +389,7 @@ function startGame(){
   state.skipsLeft = SKIPS_ALLOWED;
   state.hearts=state.diff.hearts; state.maxHearts=state.diff.hearts;
   state.reviewLog = [];
+  state.finishPending = false;
   el.correctCount.textContent='0'; el.wrongCount.textContent='0';
   renderHearts();
   renderProgressDots();
@@ -447,12 +469,14 @@ function loadQuestion(){
 
   const q=state.round[0];
   state.answered=false;
+  state.finishPending=false;
 
   el.questionCounter.textContent=`Question ${state.idx+1} of ${state.totalQuestions}`;
   el.resultPanel.classList.remove('show');
   el.grammarDefBlock.innerHTML=''; el.derivationBlock.innerHTML=''; el.parseTreeDisplay.innerHTML='';
   el.resultMsg.innerHTML=''; el.feedbackMsg.textContent='';
   el.nextBtn.disabled=true;
+  el.nextBtn.innerHTML=`Next Question <svg class="icon" viewBox="0 0 24 24"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>`;
 
   el.skipBtn.style.display='inline-flex';
   el.skipBtn.disabled = state.round.length<=1 || state.skipsLeft<=0;
@@ -566,17 +590,35 @@ function handleTimeUp(){
   revealCorrect(q.type, q, 'timeout', null);
 }
 
+// Builds the same "formal grammar / derivation / parse tree" markup used in
+// the live result panel, reused for the Answer Review modal so every
+// question (including the last one) keeps its full breakdown.
+function buildFullDetailHtml(gIdx, str, isGenerated){
+  if(!isGenerated){
+    return `<div class="grammar-def-block"><div class="gdb-title">No Derivation</div><div class="gdb-row"><span class="gdb-val">"${str===''?'ε':str}" is not in the language of this grammar — there is no parse tree to show.</span></div></div>`;
+  }
+  const g=grammars[gIdx];
+  const defHtml = `<div class="grammar-def-block">${renderGrammarDef(g)}</div>`;
+  const derivHtml = `<div class="derivation-block">${renderDerivation(g, str)}</div>`;
+  const treeHtml = `<div class="parse-tree-container"><div class="pt-title">Parse Tree</div><div class="tree-svg-wrap">${buildTreeSVG(g.buildTree(str))}</div></div>`;
+  return defHtml + derivHtml + treeHtml;
+}
+
 function pushReviewEntry(type, q, status, userAnswer){
   const entry = { qNum: state.idx+1, type, string:q.string, status };
+  let gIdx, str, isGenerated;
   if(type==='identify'){
     entry.correctLabel = grammarLabel(q.correctGrammar);
     entry.userLabel = status==='timeout' ? null : grammarLabel(userAnswer);
+    gIdx = q.correctGrammar; str = q.string; isGenerated = gIdx !== -1;
   } else {
     const actuallyValid = grammars[q.grammarIndex].validate(q.string).valid;
     entry.correctLabel = actuallyValid ? 'Valid' : 'Invalid';
     entry.grammarName = grammars[q.grammarIndex].name;
     entry.userLabel = status==='timeout' ? null : (userAnswer ? 'Valid' : 'Invalid');
+    gIdx = q.grammarIndex; str = q.string; isGenerated = actuallyValid;
   }
+  entry.fullDetailHtml = buildFullDetailHtml(gIdx, str, isGenerated);
   state.reviewLog.push(entry);
 }
 
@@ -589,11 +631,12 @@ function revealCorrect(type, q, status, userAnswer){
 
   pushReviewEntry(type, q, status, userAnswer);
 
+  // Every question — including the very last one — now shows its full
+  // reveal (grammar def / derivation / parse tree) before the round ends.
+  // We just remember that this is the last reveal so the "Next" button can
+  // send the player to the score screen instead of loading another question.
   const roundIsOver = (state.idx >= state.totalQuestions - 1) || state.hearts<=0;
-  if(roundIsOver){
-    endRound();
-    return;
-  }
+  state.finishPending = roundIsOver;
 
   let gIdx, str, isGenerated;
   if(type==='identify'){
@@ -641,6 +684,11 @@ function revealCorrect(type, q, status, userAnswer){
   el.resultPanel.classList.add('show');
   el.nextBtn.disabled=false;
 
+  if(state.finishPending){
+    el.nextBtn.innerHTML = `<svg class="icon" viewBox="0 0 24 24"><path d="M12 2l2.9 6.26L21 9.27l-4.5 4.39L17.8 21 12 17.77 6.2 21l1.3-7.34L3 9.27l6.1-1.01z"/></svg> View Score`;
+  } else {
+    el.nextBtn.innerHTML = `Next Question <svg class="icon" viewBox="0 0 24 24"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>`;
+  }
 }
 
 function renderGrammarDef(g){
@@ -718,6 +766,14 @@ function skipQuestion(){
 }
 
 function advance(){
+  // The last question of the round now also gets its full reveal shown
+  // (handled in revealCorrect). Once the player is ready, "Next Question"
+  // becomes "View Score" and this sends them to the score screen instead
+  // of trying to load a question that no longer exists.
+  if(state.finishPending){
+    endRound();
+    return;
+  }
   state.round.shift();
   state.idx++;
   loadQuestion();
@@ -781,6 +837,7 @@ function renderReviewList(){
       </div>
       <div class="review-item-string">${strDisplay}</div>
       <div class="review-item-detail">${detail}</div>
+      <div class="review-item-full">${e.fullDetailHtml || ''}</div>
     </div>`;
   }).join('');
 }
